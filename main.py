@@ -9,7 +9,7 @@ import random
 
 
 
-# Colors
+# The colors used for the application's theme.
 darkish = '#%02x%02x%02x' % (29, 30, 38)
 whitish = '#%02x%02x%02x' % (214, 216, 218)
 code_green = '#%02x%02x%02x' % (80, 200, 70)
@@ -17,39 +17,43 @@ code_green_light = '#%02x%02x%02x' % (170, 200, 150)
 code_dark = '#%02x%02x%02x' % (23, 24, 30)
 
 
+# Refreshes the application.
 def new():
     print("new pressed")
     mineralview.state = -1
 
-
+# Go back to the previous image.
 def back():
     if (mineralview.position > 0):
         mineralview.position-=1
 
+# Go to the next image.
 def next():
     if (mineralview.position < mineralview.count1-1):
         mineralview.position+=1
 
+# Select the first directory..
 def select_folder1():
     dir1 = Label(text="                                                                  ",
                  font='Helvetica 12 bold', bg=darkish, fg=code_green)
     dir1.grid(row=4, column=4, columnspan=2, )
-    directory =  filedialog.askdirectory(initialdir = "/",title = "Select directory 2")
+    directory =  filedialog.askdirectory(initialdir = "/",title = "Select directory 1")
     print(directory)
     mineralview.count1 = glob.glob(directory+"/*").__len__()
     mineralview.dir1 =directory
 
-
+# Select the second directory.
 def select_folder2():
     dir2 = Label(text="                                                                  ",
                  font='Helvetica 12 bold', bg=darkish, fg=code_green)
     dir2.grid(row=4, column=1, columnspan=2, )
-    directory =  filedialog.askdirectory(initialdir = "/",title = "Select directory 1")
+    directory =  filedialog.askdirectory(initialdir = "/",title = "Select directory 2")
     print(directory)
     mineralview.count2 = glob.glob(directory + "/*").__len__()
     mineralview.dir2 = directory
 
 
+# Starts the program. Called on refresh and on initial startup.
 def start_program():
     global root
     root = Tk()
@@ -103,6 +107,7 @@ def start_program():
 
 start_program()
 
+# Holds key global variables
 class mineralview:
     position = 1
     state = 0
@@ -114,8 +119,7 @@ class mineralview:
 
 
 
-
-
+# The main running method.
 def running():
 
     prev_selection = 1
@@ -147,14 +151,13 @@ def running():
             pathlabel2.grid(row=5, column=1, columnspan=2, )
 
 
-
-
-
+        # Checks that both directories have been selected. If they have different numbers of images, select the lowest number.
         if (mineralview.count1 > 0 and mineralview.count2 > 0) :
             if mineralview.count1 > mineralview.count2:
                 mineralview.count1 = mineralview.count2
             else:
                 mineralview.count2 = mineralview.count1
+
 
         if (mineralview.count1 == mineralview.count2) :
             mineralview.position_label = Label(text="\nSelect folders with the same number of images",
@@ -186,17 +189,18 @@ def running():
                                      bg=darkish, fg=whitish)
             reflective_title.grid(row=1, columnspan=2, column=1)
 
-            # open image 1
+            # Opens Image 1.
             print(mineralview.position)
             path = glob.glob(mineralview.dir1+"/" + mineralview.position.__str__() + ".*")[0]
             file = Image.open(path)
             aspect = (file.width/file.height)
 
+            # Handles image scaling.
             if aspect > 1 :
-                #width is bigger
+                # width is bigger
                 img = ImageTk.PhotoImage(Image.open(path).resize((300, (math.floor(300 * 1/aspect))), Image.ANTIALIAS))
             elif aspect < 1 :
-                #height is bigger
+                # height is bigger
                 img = ImageTk.PhotoImage(Image.open(path).resize((math.floor(300 * aspect), 300), Image.ANTIALIAS))
             else :
                 img = ImageTk.PhotoImage(Image.open(path).resize((300, 300), Image.ANTIALIAS))
@@ -206,12 +210,13 @@ def running():
             panel.grid(row=3, column=4, columnspan=2,)
             panel.lift()
 
-            # open image 2
+            # Opens Image 2.
             path2 = glob.glob(mineralview.dir2 + "/" + mineralview.position.__str__() + ".*")[0]
 
             file2 = Image.open(path2)
             aspect2 = (file2.width / file2.height)
 
+            # Handles image scaling.
             if aspect2 > 1:
                 # width is bigger
                 img2 = ImageTk.PhotoImage(
@@ -253,6 +258,7 @@ def running():
         root.update_idletasks()
         root.update()
 
+    # This runs when the program refreshes.
     if mineralview.state == -1:
         mineralview.state = 0
         mineralview.count1 = -2
