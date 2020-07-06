@@ -8,6 +8,85 @@ import pandas as pd
 import csv
 import os
 import random
+import numpy as np
+
+
+# The colors used for the application's theme.
+darkish = '#%02x%02x%02x' % (29, 30, 38)
+whitish = '#%02x%02x%02x' % (214, 216, 218)
+code_green = '#%02x%02x%02x' % (80, 200, 70)
+code_green_light = '#%02x%02x%02x' % (170, 200, 150)
+code_dark = '#%02x%02x%02x' % (23, 24, 30)
+
+
+# Refreshes the application.
+def new():
+    print("new pressed")
+    mineralview.state = -1
+
+# Go back to the previous image.
+def back():
+    if (mineralview.position > 0):
+        mineralview.position-=1
+
+# Go to the next image.
+def next():
+    if (mineralview.position < mineralview.count1-1):
+        mineralview.position+=1
+
+# Select the first directory..
+def select_folder1():
+    dir1 = Label(text="                                                                  ",
+                 font='Helvetica 12 bold', bg=darkish, fg=code_green)
+    dir1.grid(row=4, column=4, columnspan=2, )
+    directory =  filedialog.askdirectory(initialdir = "/",title = "Select directory 1")
+    print(directory)
+    mineralview.count1 = glob.glob(directory+"/*").__len__()
+    mineralview.dir1 =directory
+
+# Select the second directory.
+def select_folder2():
+    dir2 = Label(text="                                                                  ",
+                 font='Helvetica 12 bold', bg=darkish, fg=code_green)
+    dir2.grid(row=4, column=1, columnspan=2, )
+    directory =  filedialog.askdirectory(initialdir = "/",title = "Select directory 2")
+    print(directory)
+    mineralview.count2 = glob.glob(directory + "/*").__len__()
+    mineralview.dir2 = directory
+
+
+# The Bounding Box class.
+class bounding_box:
+    def __init__(self, left, top, right, bottom):
+        self.left = left
+        self.top = top
+        self.right = right
+        self.bottom = bottom
+
+    def crop_image(self, image, number):
+        print("cropping image", number)
+        img = Image.open(image)
+        s2 = img.crop((self.left, self.top, self.right, self.bottom))
+        s2.save("output/" + str(number) + ".png")
+
+# Chops the selected image into the individual grains based on the bounding boxes from the selected CSV file
+def chop_image(constraint_name= "Diameter", min_val= 0, max_val=999999):
+
+    popup.destroy()
+
+    if (max_val == ""):
+        max_val = 999999
+
+    if (min_val == ""):import glob
+import math
+import time
+from tkinter import *
+from tkinter import filedialog, ttk
+from PIL import ImageTk,Image
+import pandas as pd
+import csv
+import os
+import random
 
 
 
@@ -216,6 +295,42 @@ def open_source_image(csv):
 def run_mineral_segmentation():
     open_source_image(open_csv())
 
+def run_colorize():
+    print("running colorize")
+    sourcepath = filedialog.askdirectory(initialdir="/", title="Select source folder")
+    savepath = filedialog.askdirectory(initialdir="/", title="Select output directory") + '/'
+
+    os.chdir(sourcepath)
+
+    ##FOLDER WITH PICTURES TO BE COLORIZED##
+    segimg = '*.tiff'
+
+    segimfnames = glob.glob(segimg)
+
+    print("result: ")
+    print(segimfnames)
+
+    for fname in segimfnames:
+
+        print(fname)
+
+        im = Image.open(fname)
+
+        imarray = np.array(im)
+
+        im1 = np.where(imarray == 1, 255, imarray)
+        im2 = np.where(imarray == 2, 255, imarray)
+        im3 = np.where(imarray == 3, 255, imarray)
+
+        # numpy.set_printoptions(threshold=sys.maxsize)
+
+        stacked_img = np.stack((im1, im2, im3), axis=-1)
+        test = Image.fromarray(stacked_img)
+        newfname = savepath + fname
+        print(newfname)
+        test.save(newfname)
+
+
 # Starts the program. Called on refresh and on initial startup.
 def start_program():
     global root
@@ -265,12 +380,17 @@ def start_program():
     subMenu = Menu(menuBar)
     global subMenu2
     subMenu2 = Menu(menuBar)
+    global subMenu3
+    subMenu3 = Menu(menuBar)
 
     menuBar.add_cascade(label='File', menu=subMenu)
     subMenu.add_command(label='New', command=new)
 
     menuBar.add_cascade(label='Grain Segmentation', menu=subMenu2)
     subMenu2.add_command(label='Start', command=run_mineral_segmentation)
+
+    menuBar.add_cascade(label='Colorize', menu=subMenu3)
+    subMenu3.add_command(label='Choose Folder', command=run_colorize)
 
 
 start_program()
@@ -358,48 +478,57 @@ def running():
             reflective_title.grid(row=1, columnspan=2, column=1)
 
             # Opens Image 1.
-            print(mineralview.position)
+            old_path = path
+
             path = glob.glob(mineralview.dir1+"/" + mineralview.position.__str__() + ".*")[0]
-            file = Image.open(path)
-            aspect = (file.width/file.height)
 
-            # Handles image scaling.
-            if aspect > 1 :
-                # width is bigger
-                img = ImageTk.PhotoImage(Image.open(path).resize((300, (math.floor(300 * 1/aspect))), Image.ANTIALIAS))
-            elif aspect < 1 :
-                # height is bigger
-                img = ImageTk.PhotoImage(Image.open(path).resize((math.floor(300 * aspect), 300), Image.ANTIALIAS))
-            else :
-                img = ImageTk.PhotoImage(Image.open(path).resize((300, 300), Image.ANTIALIAS))
+            if (old_path != path):
+                file = Image.open(path)
+                aspect = (file.width/file.height)
 
-            panel = Label(root, image=img, borderwidth=0)
-            panel.photo = img
-            panel.grid(row=3, column=4, columnspan=2,)
-            panel.lift()
+                # Handles image scaling.
+                if aspect > 1 :
+                    # width is bigger
+                    img = ImageTk.PhotoImage(Image.open(path).resize((300, (math.floor(300 * 1/aspect))), Image.ANTIALIAS))
+                elif aspect < 1 :
+                    # height is bigger
+                    img = ImageTk.PhotoImage(Image.open(path).resize((math.floor(300 * aspect), 300), Image.ANTIALIAS))
+                else :
+                    img = ImageTk.PhotoImage(Image.open(path).resize((300, 300), Image.ANTIALIAS))
+
+                panel = Label(root, image=img, borderwidth=0)
+                panel.photo = img
+                panel.grid(row=3, column=4, columnspan=2,)
+                panel.lift()
+
+            print("PATH 2: ")
+            print(path2)
+
+            old_path2 = path2
 
             # Opens Image 2.
             path2 = glob.glob(mineralview.dir2 + "/" + mineralview.position.__str__() + ".*")[0]
 
-            file2 = Image.open(path2)
-            aspect2 = (file2.width / file2.height)
+            if (old_path2 != path2):
+                file2 = Image.open(path2)
+                aspect2 = (file2.width / file2.height)
 
-            # Handles image scaling.
-            if aspect2 > 1:
-                # width is bigger
-                img2 = ImageTk.PhotoImage(
-                    Image.open(path2).resize((300, (math.floor(300 * 1 / aspect2))), Image.ANTIALIAS))
-            elif aspect2 < 1:
-                # height is bigger
-                img2 = ImageTk.PhotoImage(Image.open(path2).resize((math.floor(300 * aspect2), 300), Image.ANTIALIAS))
-            else:
-                img2 = ImageTk.PhotoImage(Image.open(path2).resize((300, 300), Image.ANTIALIAS))
+                # Handles image scaling.
+                if aspect2 > 1:
+                    # width is bigger
+                    img2 = ImageTk.PhotoImage(
+                        Image.open(path2).resize((300, (math.floor(300 * 1 / aspect2))), Image.ANTIALIAS))
+                elif aspect2 < 1:
+                    # height is bigger
+                    img2 = ImageTk.PhotoImage(Image.open(path2).resize((math.floor(300 * aspect2), 300), Image.ANTIALIAS))
+                else:
+                    img2 = ImageTk.PhotoImage(Image.open(path2).resize((300, 300), Image.ANTIALIAS))
 
 
-            panel2 = Label(root, image=img2, borderwidth=0)
-            panel2.photo = img2
-            panel2.grid(row=3, column=1, columnspan=2,)
-            panel2.lift()
+                panel2 = Label(root, image=img2, borderwidth=0)
+                panel2.photo = img2
+                panel2.grid(row=3, column=1, columnspan=2,)
+                panel2.lift()
 
         else:
             mineralview.position_label = Label(text="\nSelect folders with the same number of images",
@@ -444,6 +573,3 @@ def running():
 
 
 running()
-
-
-
