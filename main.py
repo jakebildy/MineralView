@@ -1,3 +1,4 @@
+import numpy as np
 import glob
 import math
 import time
@@ -5,88 +6,7 @@ from tkinter import *
 from tkinter import filedialog, ttk
 from PIL import ImageTk,Image
 import pandas as pd
-import csv
 import os
-import random
-import numpy as np
-
-
-# The colors used for the application's theme.
-darkish = '#%02x%02x%02x' % (29, 30, 38)
-whitish = '#%02x%02x%02x' % (214, 216, 218)
-code_green = '#%02x%02x%02x' % (80, 200, 70)
-code_green_light = '#%02x%02x%02x' % (170, 200, 150)
-code_dark = '#%02x%02x%02x' % (23, 24, 30)
-
-
-# Refreshes the application.
-def new():
-    print("new pressed")
-    mineralview.state = -1
-
-# Go back to the previous image.
-def back():
-    if (mineralview.position > 0):
-        mineralview.position-=1
-
-# Go to the next image.
-def next():
-    if (mineralview.position < mineralview.count1-1):
-        mineralview.position+=1
-
-# Select the first directory..
-def select_folder1():
-    dir1 = Label(text="                                                                  ",
-                 font='Helvetica 12 bold', bg=darkish, fg=code_green)
-    dir1.grid(row=4, column=4, columnspan=2, )
-    directory =  filedialog.askdirectory(initialdir = "/",title = "Select directory 1")
-    print(directory)
-    mineralview.count1 = glob.glob(directory+"/*").__len__()
-    mineralview.dir1 =directory
-
-# Select the second directory.
-def select_folder2():
-    dir2 = Label(text="                                                                  ",
-                 font='Helvetica 12 bold', bg=darkish, fg=code_green)
-    dir2.grid(row=4, column=1, columnspan=2, )
-    directory =  filedialog.askdirectory(initialdir = "/",title = "Select directory 2")
-    print(directory)
-    mineralview.count2 = glob.glob(directory + "/*").__len__()
-    mineralview.dir2 = directory
-
-
-# The Bounding Box class.
-class bounding_box:
-    def __init__(self, left, top, right, bottom):
-        self.left = left
-        self.top = top
-        self.right = right
-        self.bottom = bottom
-
-    def crop_image(self, image, number):
-        print("cropping image", number)
-        img = Image.open(image)
-        s2 = img.crop((self.left, self.top, self.right, self.bottom))
-        s2.save("output/" + str(number) + ".png")
-
-# Chops the selected image into the individual grains based on the bounding boxes from the selected CSV file
-def chop_image(constraint_name= "Diameter", min_val= 0, max_val=999999):
-
-    popup.destroy()
-
-    if (max_val == ""):
-        max_val = 999999
-
-    if (min_val == ""):import glob
-import math
-import time
-from tkinter import *
-from tkinter import filedialog, ttk
-from PIL import ImageTk,Image
-import pandas as pd
-import csv
-import os
-import random
 
 
 
@@ -97,6 +17,8 @@ code_green = '#%02x%02x%02x' % (80, 200, 70)
 code_green_light = '#%02x%02x%02x' % (170, 200, 150)
 code_dark = '#%02x%02x%02x' % (23, 24, 30)
 
+class config:
+    imagejpath = ""
 
 # Refreshes the application.
 def new():
@@ -330,6 +252,24 @@ def run_colorize():
         print(newfname)
         test.save(newfname)
 
+CONFIG_FILE = 'config.txt'
+
+def connect_imagej():
+    print("connecting imagej")
+    config.imagejpath = filedialog.askopenfilename()
+    with open(CONFIG_FILE, 'w') as f:
+        f.write(str(config.imagejpath))
+
+def run_imagej():
+    print("running imagej")
+    os.system("java -jar -Xmx4096m " + config.imagejpath + "/Contents/Java/ij.jar")
+
+def run_mineral_thresholding():
+    print("running mineral thresholding")
+    inputpath = filedialog.askdirectory(initialdir="/", title="Select input folder")+'/'
+    outputpath = filedialog.askdirectory(initialdir="/", title="Select output directory") + '/'
+    os.system("java -jar -Xmx4096m " + config.imagejpath + "/Contents/Java/ij.jar -macro ThresholdandSaveExcludingEdge.ijm" + inputpath + "#" + outputpath)
+
 
 # Starts the program. Called on refresh and on initial startup.
 def start_program():
@@ -337,6 +277,15 @@ def start_program():
     root = Tk()
     root.minsize(width=600, height=700)
     root.configure(bg=darkish)
+
+
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            config.imagejpath=(str(f.read()))
+    except IOError:  # this is what happens if the file doesn't exist
+        pass
+
+
     w = Label(root, text="MineralView", font='Helvetica 30 bold', bg=darkish, fg=whitish).grid(row=0, column=2,
                                                                                                columnspan=3, padx=10)
     w2 = Label(root, text="", bg=darkish).grid(row=2, column=0)
@@ -382,6 +331,8 @@ def start_program():
     subMenu2 = Menu(menuBar)
     global subMenu3
     subMenu3 = Menu(menuBar)
+    global subMenu4
+    subMenu4 = Menu(menuBar)
 
     menuBar.add_cascade(label='File', menu=subMenu)
     subMenu.add_command(label='New', command=new)
@@ -391,6 +342,11 @@ def start_program():
 
     menuBar.add_cascade(label='Colorize', menu=subMenu3)
     subMenu3.add_command(label='Choose Folder', command=run_colorize)
+
+    menuBar.add_cascade(label='ImageJ', menu=subMenu4)
+    subMenu4.add_command(label='Connect', command=connect_imagej)
+    subMenu4.add_command(label='Run', command=run_imagej)
+    subMenu4.add_command(label='Mineral Thresholding', command=run_mineral_thresholding)
 
 
 start_program()
