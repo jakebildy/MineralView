@@ -268,7 +268,7 @@ def run_mineral_thresholding():
     print("running mineral thresholding")
     inputpath = filedialog.askdirectory(initialdir="/", title="Select input folder")+'/'
     outputpath = filedialog.askdirectory(initialdir="/", title="Select output directory") + '/'
-    os.system("java -jar -Xmx4096m " + config.imagejpath + "/Contents/Java/ij.jar -macro ThresholdandSaveExcludingEdge.ijm" + inputpath + "#" + outputpath)
+    os.system("java -jar -Xmx4096m " + config.imagejpath + "/Contents/Java/ij.jar -macro ThresholdandSaveExcludingEdge.ijm " + inputpath + "#" + outputpath)
 
 
 # Starts the program. Called on refresh and on initial startup.
