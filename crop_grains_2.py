@@ -6,54 +6,18 @@ import pandas as pd
 from PIL import Image
 import png
 import sys
-import printy
 import glob
 import numpy as np
+
+global grain_pixels
+global total_pixels
 
 grain_pixels = []
 total_pixels = []
 
-x_coord = 0
-y_coord = 0
-
-# ARGUMENTS
-from_photo = True
-
-csv_path = ""
-
-ilastik_path = ""
-
-if __name__ == "__main__":
-    for i, arg in enumerate(sys.argv):
-        if i == 1:
-            input_val = arg
-        if i == 2:
-            output_val = arg
-        if i == 3:
-            photo_val = arg
-        if i == 4:
-            csv_path = arg
-        if i == 5:
-            ilastik_path = arg
-
-
-
-# The Bounding Box class.
-class bounding_box:
-    def __init__(self, left, top, right, bottom):
-        self.left = left
-        self.top = top
-        self.right = right
-        self.bottom = bottom
-
-    def crop_image(self, image, number):
-        print("cropping image", number)
-        img = Image.open(image)
-        s2 = img.crop((self.left, self.top, self.right, self.bottom))
-        s2.save("output/" + str(number) + ".png")
 
 # Chops the selected image into the individual grains based on the bounding boxes from the selected CSV file
-def chop_image(constraint_name= "Diameter", min_val= 0, max_val=999999):
+def chop_image(photo_val, csv_path, savepath, constraint_name= "Diameter", min_val= 180, max_val=999999):
 
     if (max_val == ""):
         max_val = 999999
@@ -61,8 +25,6 @@ def chop_image(constraint_name= "Diameter", min_val= 0, max_val=999999):
     if (min_val == ""):
         min_val = 0
 
-    # Save path example: F:/ilastik/testfolder/
-    savepath = "../../output/chopped/"
 
     ##OPEN EXCEL
     df = pd.read_csv(csv_path)
@@ -119,7 +81,7 @@ def chop_image(constraint_name= "Diameter", min_val= 0, max_val=999999):
             cropped_image = image.crop((bbmin0[i], bbmin1[i], bbmax0[i], bbmax1[i]))
 
             savefolder = savepath
-            savename = savefolder + str(count) + ".tif"
+            savename = savefolder + str(df["object_id"][i]) + ".tif"
             count+=1
             print(savename)
             savenamefinal = os.path.join(savename)
@@ -129,17 +91,21 @@ def chop_image(constraint_name= "Diameter", min_val= 0, max_val=999999):
             # i += 1
 
 
-def crop_grains(input, output, x, y):
+def crop_grains(input, output, photo_in, x, y):
 
-
+    grain_pixels.clear()
+    total_pixels.clear()
 
     sys.setrecursionlimit(10 ** 6)
 
     image = Image.open(input)
+    photo = Image.open(photo_in)
 
     global image_rgb
     image_rgb = image.convert("RGB")
 
+    global photo_rgb
+    photo_rgb = photo.convert("RGB")
 
 
     global height
@@ -148,12 +114,28 @@ def crop_grains(input, output, x, y):
     global width
     width = image.width
 
-    global coords
     coords = [None] * (width+2)
     for i in range(width+2):
         coords[i] = [True] * (height+2)
 
-    find_boundary_initial(x, y)
+    if (is_black(width//2, height//2)):
+        print("black on left and top")
+        floodfill(x-20, y-20)
+
+    elif (is_black(width//2, 0)):
+        print("black on top")
+        floodfill(x, y-20, coords)
+
+    elif (is_black(0, height//2)):
+        print("black on left side")
+        find_boundary_initial(x-20, y, coords)
+
+    else:
+        find_boundary_initial(x, y, coords)
+
+    print("found pixels: " + grain_pixels.__len__().__str__())
+
+
 
     # export to png output
 
@@ -166,6 +148,13 @@ def crop_grains(input, output, x, y):
 
 
 
+def is_black(x, y):
+    r, g, b = image_rgb.getpixel((x, y))
+
+    if (r < 10 and g < 10 and b < 10):
+        return True
+    else:
+        return False
 
 
 def is_valid_color(x, y):
@@ -174,7 +163,7 @@ def is_valid_color(x, y):
     if (x < width and x >= 0 and y < height and y >= 0):
         r,g,b = image_rgb.getpixel((x, y))
 
-        if (r < 100):
+        if (g > 100):
             return True
 
         else:
@@ -184,39 +173,69 @@ def is_valid_color(x, y):
         return False
 
 
-def find_boundary_initial(x, y):
+
+def floodfill(x, y):
+
+    # assume surface is a 2D image and surface[x][y] is the color at x, y.
+
+    theStack = [ (x, y) ]
+    while (len(theStack) > 0):
+
+        x, y = theStack.pop()
+
+        if (x == 224):
+            continue
+        if (x == -1):
+            continue
+        if (y == -1):
+            continue
+        if (y == 224):
+            continue
+
+
+        if is_valid_color(x, y):
+            continue
+
+        r, g, b = photo_rgb.getpixel((x, y))
+
+
+        grain_pixels.__add__([x, y, r, g, b])
+
+
+        theStack.append( (x + 1, y) )  # right
+        theStack.append( (x - 1, y) )  # left
+        theStack.append( (x, y + 1) )  # down
+        theStack.append( (x, y - 1) )  # up
+
+
+def find_boundary_initial(x, y, coords):
 
     if (x < width and x >= 0 and y < height and y >= 0):
 
-        if (from_photo) :
-            r, g, b = photo_rgb.getpixel((x, y))
-        else:
-            r, g, b = image_rgb.getpixel((x, y))
+         r, g, b = photo_rgb.getpixel((x, y))
+
 
         grain_pixels.__add__([x, y, r, g, b])
 
 
         if is_valid_color(x+1, y):
-            find_boundary2(x+1, y, 0, 1)
+            find_boundary(x+1, y, 0, 1, coords)
 
         if is_valid_color(x, y+1):
-            find_boundary(x, y+1, 1, 1)
+            find_boundary(x, y+1, 1, 1, coords)
 
         if is_valid_color(x - 1, y):
-            find_boundary(x - 1, y, 2, 1)
+            find_boundary(x - 1, y, 2, 1, coords)
 
         if is_valid_color(x, y-1):
-            find_boundary(x, y-1, 3, 1)
+            find_boundary(x, y-1, 3, 1, coords)
 
 
-def find_boundary(x, y, d, rec):
+def find_boundary(x, y, d, rec, coords):
 
     if (x < width and x >= 0 and y < height and y >= 0):
 
-        if (from_photo):
-            r, g, b = photo_rgb.getpixel((x, y))
-        else:
-            r, g, b = image_rgb.getpixel((x, y))
+        r, g, b = image_rgb.getpixel((x, y))
 
         if (x < coords.__len__()):
             if (y < coords[x].__len__()):
@@ -230,6 +249,9 @@ def find_boundary(x, y, d, rec):
                   #  print(x, y)
                   #  print("~~~~~~~~~")
 
+                    if d != 0:
+                        if is_valid_color(x + 1, y):
+                            find_boundary(x + 1, y, 1, rec + 1)
 
                     if d != 1:
                         if is_valid_color(x - 1, y):
@@ -242,43 +264,6 @@ def find_boundary(x, y, d, rec):
                     if d != 3:
                         if is_valid_color(x, y-1):
                             find_boundary(x, y-1, 2, rec+1)
-
-
-
-def find_boundary2(x, y, d, rec):
-
-    if (x < width and x >= 0 and y < height and y >= 0):
-
-        if (from_photo):
-            r, g, b = photo_rgb.getpixel((x, y))
-        else:
-            r, g, b = image_rgb.getpixel((x, y))
-
-        if(x < coords.__len__()):
-            if (y < coords[x].__len__()):
-                if (coords[x][y] != None):
-
-                    grain_pixels.append([x, y, r, g, b])
-
-                    coords[x][y] = None
-
-                    # for debugging
-                    #  print(x, y)
-                    #  print("~~~~~~~~~")
-
-                    if d != 0:
-                        if is_valid_color(x+1, y):
-                            find_boundary2(x+1, y, 1,  rec+1)
-
-                    if d != 2:
-                        if is_valid_color(x, y+1):
-                            find_boundary2(x, y+1, 3, rec+1)
-
-                    if d != 3:
-                        if is_valid_color(x, y-1):
-                            find_boundary2(x, y-1, 2, rec+1)
-
-
 
 
 def convert_array(width, height):
@@ -310,13 +295,14 @@ def convert_array(width, height):
 
 def run_colorize():
     print("running colorize")
-    sourcepath = "../../output/chopped/"
+
+    ##FOLDER WITH PICTURES TO BE COLORIZED##
+    sourcepath = "output/chopped_tiff/"
     savepath = "../../output/colorized/"
 
     os.chdir(sourcepath)
 
-    ##FOLDER WITH PICTURES TO BE COLORIZED##
-    segimg = '*.tiff'
+    segimg = '*.tif'
 
     segimfnames = glob.glob(segimg)
 
@@ -343,30 +329,3 @@ def run_colorize():
         print(newfname)
         test.save(newfname)
 
-if from_photo:
-    photo_image = Image.open(photo_val)
-    global photo_rgb
-    photo_rgb = photo_image.convert("RGB")
-
-
-#chops the image
-chop_image()
-
-# generate black tiffs
-
-if (platform.system == "Darwin"):
-    # Mac OS
-    os.system(ilastik_path + "/Contents/ilastik-release/run_ilastik.sh  --headless --project=MyProject.ilp my_next_image1.png my_next_image2.png")
-
-if (platform.system == "Linux"):
-    # Linux
-    os.system(ilastik_path + "/run_ilastik.sh --headless --project=MyProject.ilp my_next_image1.png my_next_image2.png")
-
-if (platform.system == "Windows"):
-    # Windows
-    os.system(ilastik_path + '/ilastik.bat --headless --project=MyProject.ilp my_next_image1.png my_next_image2.png')
-
-#colorize
-run_colorize()
-
-crop_grains(input_val, output_val, int(x_coord), int(y_coord))
