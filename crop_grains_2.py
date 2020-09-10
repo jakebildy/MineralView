@@ -114,24 +114,45 @@ def crop_grains(input, output, photo_in, x, y):
     global width
     width = image.width
 
+    global coords
     coords = [None] * (width+2)
     for i in range(width+2):
         coords[i] = [True] * (height+2)
 
-    if (is_black(width//2, height//2)):
-        print("black on left and top")
-        floodfill(x-20, y-20)
+    # if (is_black(width//2, height//2)):
+    #     print("black on left and top")
+    #     floodfill(x-20, y-20)
+    #
+    # elif (is_black(width//2, 0)):
+    #     print("black on top")
+    #     floodfill(x, y-20)
+    #
+    # elif (is_black(0, height//2)):
+    #     print("black on left side")
+    #     floodfill(x-20, y)
+    #
+    # else:
 
-    elif (is_black(width//2, 0)):
-        print("black on top")
-        floodfill(x, y-20, coords)
-
-    elif (is_black(0, height//2)):
-        print("black on left side")
-        find_boundary_initial(x-20, y, coords)
-
+    if is_valid_color(x, y):
+        floodfill(x, y)
     else:
-        find_boundary_initial(x, y, coords)
+
+        r = 1
+
+        while not (is_valid_color(x+r, y+r) or is_valid_color(x-r, y-r) or is_valid_color(x+r, y-r) or is_valid_color(x-r, y+r)):
+            r+=1
+
+        if is_valid_color(x+r, y+r):
+            floodfill(x+r, y+r)
+        elif is_valid_color(x-r, y-r):
+            floodfill(x-r, y-r)
+        elif is_valid_color(x+r, y-r):
+            floodfill(x+r, y-r)
+        elif is_valid_color(x - r, y + r):
+            floodfill(x - r, y + r)
+
+
+
 
     print("found pixels: " + grain_pixels.__len__().__str__())
 
@@ -183,87 +204,94 @@ def floodfill(x, y):
 
         x, y = theStack.pop()
 
-        if (x == 224):
+        if (x == width):
             continue
         if (x == -1):
             continue
         if (y == -1):
             continue
-        if (y == 224):
+        if (y == height):
             continue
 
 
-        if is_valid_color(x, y):
+        if not is_valid_color(x, y):
             continue
-
-        r, g, b = photo_rgb.getpixel((x, y))
-
-
-        grain_pixels.__add__([x, y, r, g, b])
-
-
-        theStack.append( (x + 1, y) )  # right
-        theStack.append( (x - 1, y) )  # left
-        theStack.append( (x, y + 1) )  # down
-        theStack.append( (x, y - 1) )  # up
-
-
-def find_boundary_initial(x, y, coords):
-
-    if (x < width and x >= 0 and y < height and y >= 0):
-
-         r, g, b = photo_rgb.getpixel((x, y))
-
-
-        grain_pixels.__add__([x, y, r, g, b])
-
-
-        if is_valid_color(x+1, y):
-            find_boundary(x+1, y, 0, 1, coords)
-
-        if is_valid_color(x, y+1):
-            find_boundary(x, y+1, 1, 1, coords)
-
-        if is_valid_color(x - 1, y):
-            find_boundary(x - 1, y, 2, 1, coords)
-
-        if is_valid_color(x, y-1):
-            find_boundary(x, y-1, 3, 1, coords)
-
-
-def find_boundary(x, y, d, rec, coords):
-
-    if (x < width and x >= 0 and y < height and y >= 0):
-
-        r, g, b = image_rgb.getpixel((x, y))
 
         if (x < coords.__len__()):
             if (y < coords[x].__len__()):
                 if (coords[x][y] != None):
 
+                    r, g, b = photo_rgb.getpixel((x, y))
+
                     grain_pixels.append([x, y, r, g, b])
 
                     coords[x][y] = None
 
-                  # for debugging
-                  #  print(x, y)
-                  #  print("~~~~~~~~~")
+                    theStack.append((x + 1, y))  # right
+                    theStack.append((x - 1, y))  # left
+                    theStack.append((x, y + 1))  # down
+                    theStack.append((x, y - 1))  # up
 
-                    if d != 0:
-                        if is_valid_color(x + 1, y):
-                            find_boundary(x + 1, y, 1, rec + 1)
 
-                    if d != 1:
-                        if is_valid_color(x - 1, y):
-                            find_boundary(x - 1, y, 0, rec+1)
-
-                    if d != 2:
-                        if is_valid_color(x, y+1):
-                            find_boundary(x, y+1, 3, rec+1)
-
-                    if d != 3:
-                        if is_valid_color(x, y-1):
-                            find_boundary(x, y-1, 2, rec+1)
+#
+# def find_boundary_initial(x, y, coords):
+#
+#     theStack = [(x, y)]
+#
+#     if (x < width and x >= 0 and y < height and y >= 0):
+#
+#         r, g, b = photo_rgb.getpixel((x, y))
+#
+#
+#         grain_pixels.__add__([x, y, r, g, b])
+#
+#
+#         if is_valid_color(x+1, y):
+#             find_boundary(x+1, y, 0, 1, coords)
+#
+#         if is_valid_color(x, y+1):
+#             find_boundary(x, y+1, 1, 1, coords)
+#
+#         if is_valid_color(x - 1, y):
+#             find_boundary(x - 1, y, 2, 1, coords)
+#
+#         if is_valid_color(x, y-1):
+#             find_boundary(x, y-1, 3, 1, coords)
+#
+#
+# def find_boundary(x, y, d, rec, coords):
+#
+#     if (x < width and x >= 0 and y < height and y >= 0):
+#
+#         r, g, b = photo_rgb.getpixel((x, y))
+#
+#         if (x < coords.__len__()):
+#             if (y < coords[x].__len__()):
+#                 if (coords[x][y] != None):
+#
+#                     grain_pixels.append([x, y, r, g, b])
+#
+#                     coords[x][y] = None
+#
+#                   # for debugging
+#                   #  print(x, y)
+#                   #  print("~~~~~~~~~")
+#
+#                     if d != 0:
+#                         if is_valid_color(x + 1, y):
+#                             find_boundary(x + 1, y, 1, rec + 1, coords)
+#
+#                     if d != 1:
+#                         if is_valid_color(x - 1, y):
+#                             find_boundary(x - 1, y, 0, rec+1, coords)
+#
+#                     if d != 2:
+#                         if is_valid_color(x, y+1):
+#                             find_boundary(x, y+1, 3, rec+1, coords)
+#
+#                     if d != 3:
+#                         if is_valid_color(x, y-1):
+#                             find_boundary(x, y-1, 2, rec+1, coords)
 
 
 def convert_array(width, height):
